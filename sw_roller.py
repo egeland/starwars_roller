@@ -5,14 +5,15 @@ from random import randint
 from decimal import Decimal
 import json
 
-sg.theme('SystemDefaultForReal')
-FONT_BASE_SIZE=14
-FONT_HEADING=("Roboto", FONT_BASE_SIZE+4, "bold")
-FONT_STAT=("Roboto", FONT_BASE_SIZE, "bold")
-FONT_SKILL=("Roboto", FONT_BASE_SIZE-2)
-FONT_BUTTON=("Roboto", FONT_BASE_SIZE)
+sg.theme('Material1')
+FONT_BASE_SIZE=18
+FONT_HEADING=("Helvetica Neue", FONT_BASE_SIZE+4, "bold")
+# FONT_STAT=("Courier", FONT_BASE_SIZE, "bold")
+FONT_STAT=("Courier", FONT_BASE_SIZE-2)
+FONT_SKILL=("Courier", FONT_BASE_SIZE-2)
+FONT_BUTTON=("Courier", FONT_BASE_SIZE)
 FONT_BUTTON_EDIT=("Courier", FONT_BASE_SIZE+2)
-FONT_RESULT=("Roboto", FONT_BASE_SIZE+10, "bold")
+FONT_RESULT=("Helvetica Neue", FONT_BASE_SIZE+10, "bold")
 FONT_LOG=("Courier", FONT_BASE_SIZE-2)
 
 MAX_RESULTS_LOG:"int" = 19
@@ -219,15 +220,15 @@ def make_layout():
             [
                 sg.Text(text="Advantages",font=FONT_STAT),
                 sg.Stretch(),
-                sg.Slider(range=(0,5), default_value=0,orientation="h",size=(45, 10),key="adv",background_color="skyblue",enable_events=True),
+                sg.Slider(range=(0,5), default_value=0,orientation="h",size=(45, 10),key="adv",background_color="white",enable_events=True),
                 sg.Text(text="+",font=FONT_LOG),
                 sg.Text(text="0", key="curr_adv",font=FONT_LOG),
                 sg.Text(text="d",font=FONT_LOG),
             ],
             [
-                sg.Text(text="Penalties",font=FONT_STAT),
+                sg.Text(text="Penalties ",font=FONT_STAT),
                 sg.Stretch(),
-                sg.Slider(range=(0,5), default_value=0,orientation="h",size=(45, 10),key="pen",background_color="pink",enable_events=True),
+                sg.Slider(range=(0,5), default_value=0,orientation="h",size=(45, 10),key="pen",background_color="lightgrey",enable_events=True),
                 sg.Text(text="-",font=FONT_LOG),
                 sg.Text(text="0", key="curr_pen",font=FONT_LOG),
                 sg.Text(text="d",font=FONT_LOG),
@@ -246,16 +247,18 @@ def make_stat_section(stat:"str",val:"dict") -> "list[sg.Element]":
     layout = []
     layout.append([
         sg.Text(f"{val['name']}",font=FONT_STAT),
-        sg.Stretch(),
+        sg.Text(f"{' ' * (20 - len(val['name']))}",font=FONT_SKILL),
         sg.Text(key=stat, text=display_as_dice(val["value"]),font=FONT_STAT),
+        sg.Text(f"{' ' * (4 - len(display_as_dice(val['value'])))}",font=FONT_SKILL),
         sg.Button("ROLL", key=f"ROLL.STAT.{stat}",font=FONT_BUTTON,button_color=("white","#0101ff"))
 
     ])
     for skill in val["skills"]:
         layout.append([
-            sg.Text(f"        {skill['key']}",font=FONT_SKILL),
-            sg.Stretch(),
+            sg.Text(f"   {skill['key']}",font=FONT_SKILL),
+            sg.Text(f"{' ' * (17 - len(skill['key']))}",font=FONT_SKILL),
             sg.Text(key=f"{stat}.{skill['key']}", text=display_as_dice(skill["value"]),font=FONT_SKILL),
+            sg.Text(f"{' ' * (4 - len(display_as_dice(skill['value'])))}",font=FONT_SKILL),
             sg.Button("ROLL", key=f"ROLL.SKILL.{stat}.{skill['key']}",font=FONT_BUTTON,button_color=("black","#55acee"))
         ])
     return layout
@@ -290,15 +293,15 @@ def make_edit_stat_section(stat:"str",val:"dict") -> "list[sg.Element]":
     layout = []
     layout.append([
         sg.Text(f"{val['name']}",font=FONT_STAT),
-        sg.Stretch(),
+        sg.Text(f"{' ' * (20 - len(val['name']))}",font=FONT_SKILL),
         sg.Text(key=stat, text=display_as_dice(val["value"]),font=FONT_STAT),
         sg.Button(" + ", key=f"INC.STAT.{stat}",font=FONT_BUTTON_EDIT,button_color=("black","lightgreen")),
         sg.Button(" - ", key=f"DEC.STAT.{stat}",font=FONT_BUTTON_EDIT,button_color=("black","pink")),
     ])
     for skill in val["skills"]:
         layout.append([
-            sg.Text(f"        {skill['key']}",font=FONT_SKILL),
-            sg.Stretch(),
+            sg.Text(f"   {skill['key']}",font=FONT_SKILL),
+            sg.Text(f"{' ' * (17 - len(skill['key']))}",font=FONT_SKILL),
             sg.Text(key=f"{stat}.{skill['key']}", text=display_as_dice(skill["value"]),font=FONT_SKILL),
             sg.Button(" + ", key=f"INC.SKILL.{stat}.{skill['key']}",font=FONT_BUTTON_EDIT,button_color=("black","lightgreen")),
             sg.Button(" - ", key=f"DEC.SKILL.{stat}.{skill['key']}",font=FONT_BUTTON_EDIT,button_color=("black","pink")),
@@ -327,6 +330,10 @@ def roll_dice(score:"Decimal") -> "int":
 def save_to_file():
     with open(options['filename'],'w') as fh:
         json.dump(character,fh,indent=2)
+    global window
+    window.close()
+    options["edit"] = False
+    window = make_window()
 
 def load_from_file():
     global character
@@ -346,10 +353,14 @@ def display_as_dice(score:"Decimal") -> "str":
     output = ""
     if dice > 0:
         output = f"{dice}d"
+    else:
+        output = "  "
     if pips > 0:
         output = f"{output}+{pips}"
+    else:
+        output = f"{output}  "
     if dice == 0 and pips == 0:
-        output = "0"
+        output = " 0  "
     return output
 
 def calculate_adjustment() -> "Decimal":
