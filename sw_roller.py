@@ -12,6 +12,7 @@ FONT_STAT=("Roboto", FONT_BASE_SIZE, "bold")
 FONT_SKILL=("Roboto", FONT_BASE_SIZE-2)
 FONT_BUTTON=("Roboto", FONT_BASE_SIZE)
 FONT_BUTTON_EDIT=("Courier", FONT_BASE_SIZE+2)
+FONT_BUTTON_NEW=("Roboto", FONT_BASE_SIZE-2)
 FONT_RESULT=("Roboto", FONT_BASE_SIZE+10, "bold")
 FONT_LOG=("Courier", FONT_BASE_SIZE-2)
 
@@ -92,7 +93,10 @@ character = {
                 {"key":"Starship Tech","value": '0.0'},
             ]
         }
-    }
+    },
+    "weapons": [
+        {"name":"Blaster","damage":"5.0"}
+    ]
 }
 
 options = {
@@ -163,6 +167,22 @@ def main():
 
         if event.startswith("DEC.SKILL."):
             dec_skill(event)
+
+        if event.startswith("INC.WEAPON."):
+            inc_weapon(event)
+
+        if event.startswith("DEC.WEAPON."):
+            dec_weapon(event)
+
+        if event.startswith("REM.WEAPON."):
+            rem_weapon(event)
+            window.close()
+            window = make_edit_window()
+
+        if event.startswith("NEW.WEAPON"):
+            new_weapon(event)
+            window.close()
+            window = make_edit_window()
 
         if event == "adv":
             options["modifier_advantage"] = f'{1.0 * values["adv"]}'
@@ -238,7 +258,8 @@ def make_layout():
             [sg.HorizontalSeparator()],
             [sg.Text(text="Results Log", font=FONT_HEADING),sg.Stretch()],
             [sg.Text(text="",key="-resultlog-",font=FONT_LOG,relief=sg.RELIEF_SUNKEN)],
-        ],size=(90,90))
+        ],size=(90,90)),
+        sg.Column(layout=make_weapon_section(character["weapons"]))
     ])
     return layout
 
@@ -257,6 +278,20 @@ def make_stat_section(stat:"str",val:"dict") -> "list[sg.Element]":
             sg.Stretch(),
             sg.Text(key=f"{stat}.{skill['key']}", text=display_as_dice(skill["value"]),font=FONT_SKILL),
             sg.Button("ROLL", key=f"ROLL.SKILL.{stat}.{skill['key']}",font=FONT_BUTTON,button_color=("black","#55acee"))
+        ])
+    return layout
+
+def make_weapon_section(weapons:"list[str]") -> "list[sg.Element]":
+    layout = []
+    layout.append([
+        sg.Text("Weapons",font=FONT_HEADING)
+    ])
+    for idx, val in enumerate(weapons):
+        layout.append([
+            sg.Text(f"  {val['name']}",font=FONT_SKILL),
+            sg.Stretch(),
+            sg.Text(key=f"{val['name']}{idx}", text=display_as_dice(val["damage"]),font=FONT_SKILL),
+            sg.Button("ROLL", key=f"ROLL.WEAPON.{idx}",font=FONT_BUTTON,button_color=("white","#ff0101"))
         ])
     return layout
 
@@ -283,6 +318,7 @@ def make_edit_layout():
     layout.append([
         sg.Column(layout=col_layout[0]),
         sg.Column(layout=col_layout[1]),
+        sg.Column(layout=make_edit_weapons_section(character["weapons"]))
     ])
     return layout
 
@@ -305,6 +341,25 @@ def make_edit_stat_section(stat:"str",val:"dict") -> "list[sg.Element]":
         ])
     return layout
 
+def make_edit_weapons_section(weapons:"list[str]") -> "list[sg.Element]":
+    layout = []
+    layout.append([
+        sg.Text("Weapons",font=FONT_HEADING)
+    ])
+    for idx, val in enumerate(weapons):
+        layout.append([
+            sg.Text(f"{val['name']}",font=FONT_STAT),
+            sg.Stretch(),
+            sg.Text(key=f"{val['name']}{idx}", text=display_as_dice(val["damage"]),font=FONT_STAT),
+            sg.Button(" + ", key=f"INC.WEAPON.{idx}",font=FONT_BUTTON_EDIT,button_color=("black","lightgreen")),
+            sg.Button(" - ", key=f"DEC.WEAPON.{idx}",font=FONT_BUTTON_EDIT,button_color=("black","pink")),
+            sg.Button("X", key=f"REM.WEAPON.{idx}",font=FONT_BUTTON_EDIT,button_color=("black","red"))
+        ])
+    layout.append([
+        sg.Stretch(),
+        sg.Button("New Weapon", key=f"NEW.WEAPON",font=FONT_BUTTON_NEW,button_color=("black","lightblue"))
+    ])
+    return layout
 
 def convert_to_dice_and_pips(score:'Decimal') -> 'list[int]':
     score_str = str(score) # deal with it as a string to split easier
@@ -332,6 +387,8 @@ def load_from_file():
     global character
     with open(options['filename'],'r') as fh:
         character = json.load(fh)
+    if "weapons" not in character:
+        character["weapons"] = []
     options["save"] = True
     options["edit"] = False
     global window
@@ -368,6 +425,11 @@ def handle_roll(event:str):
                 break
         result = roll_dice(Decimal(character["stats"][stat]["value"]) + Decimal(skill_value) + adjustment_total)
         record_result(f'{character["stats"][stat]["name"]}/ {skill}', result)
+    elif event.startswith("ROLL.WEAPON."):
+        _,_,idx = event.split(".")
+        idx = int(idx)
+        result = roll_dice(character["weapons"][idx]["damage"])
+        record_result(f'{character["weapons"][idx]["name"]}',result)
     else: # must be a stat roll
         _,_,stat = event.split(".")
         result = roll_dice(Decimal(character["stats"][stat]["value"]) + adjustment_total)
@@ -414,6 +476,48 @@ def dec_skill(event:"str"):
             s["value"] = str(new_score)
             window[f"{stat}.{skill}"].update(display_as_dice(new_score))
             break
+
+def inc_weapon(event:"str"):
+    _,_,idx = event.split(".")
+    idx = int(idx)
+    new_score = Decimal(character["weapons"][idx]["damage"]) + Decimal('0.1')
+    while int(str(new_score).split('.')[-1]) > 2:
+        new_score += Decimal('0.7')
+    character["weapons"][idx]["damage"] = str(new_score)
+    window[f"{character['weapons'][idx]['name']}{idx}"].update(display_as_dice(new_score))
+
+def dec_weapon(event:"str"):
+    _,_,idx = event.split(".")
+    idx = int(idx)
+    new_score = Decimal(character["weapons"][idx]["damage"]) - Decimal('0.1')
+    while int(str(new_score).split('.')[-1]) > 2:
+        new_score -= Decimal('0.7')
+    if new_score < Decimal('0'):
+        new_score = '0.0'
+    character["weapons"][idx]["damage"] = str(new_score)
+    window[f"{character['weapons'][idx]['name']}{idx}"].update(display_as_dice(new_score))
+
+def rem_weapon(event:"str"):
+    _,_,idx = event.split(".")
+    idx = int(idx)
+    character["weapons"].pop(idx)
+
+def new_weapon(event:"str"):
+    weapon = sg.popup_get_text("Weapon Name",
+        title = "New Weapon",
+        default_text = "Blaster",
+        size = (90, None),
+        button_color = None,
+        background_color = None,
+        text_color = None,
+        icon = None,
+        font = None,
+        no_titlebar = False,
+        grab_anywhere = False,
+        keep_on_top = True,
+        location = (0, 0)
+    )
+    character["weapons"].append({"name": weapon, "damage": "1.0"})
 
 def record_result(pretty:"str",result:"int"):
     window['-result-'].update(f"{pretty}: {result}")
