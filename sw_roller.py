@@ -91,6 +91,7 @@ character = {
                 {"key":"Repulsor Tech","value": '0.0'},
                 {"key":"Security",     "value": '0.0'},
                 {"key":"Starship Tech","value": '0.0'},
+                {"key":"Weapons Tech", "value": '0.0'},
             ]
         }
     },
